@@ -218,3 +218,38 @@ trust `audio_status`:
 SELECT substr(timestamp,1,19) AS ts, device, substr(transcription,1,60) AS t
 FROM audio_transcriptions ORDER BY id DESC LIMIT 10
 ```
+
+## 7. GUI app vs. headless recorder
+
+They are **peers, not client and server**. The Tauri app bundles its own engine and talks to it over
+HTTP on `localhost:3030` (`apps/screenpipe-app-tauri/lib/api.ts`, `src-tauri/src/recording.rs`); the
+LaunchAgent runs that same engine without any UI. Consequences worth knowing:
+
+- The app always **spawns** its engine (`spawn_screenpipe`) and binds the configured port
+  (`server_core.rs` → `bind_listener`). It does not attach to an engine that is already running.
+- Both need the database, and the macOS engine takes an **exclusive** `unix-excl` lock. A second
+  process against the same data dir fails with `database is locked (5)`.
+- So for a given data directory, run **one** engine: either the LaunchAgent (always-on capture, no UI)
+  or the desktop app (UI, which owns capture while it runs). Launching the app while the agent holds
+  the DB does not "connect" to it — it conflicts with it.
+
+This is why nothing appeared in the app while capture was clearly working: the agent was the engine,
+and the app was not running.
+
+### Managing the headless recorder
+
+`~/.local/bin/screenpipe-ctl.sh` wraps the operations that matter, without needing the GUI:
+
+```
+screenpipe-ctl.sh status     # pid, uptime, port, db size, data dir, free space
+screenpipe-ctl.sh health     # status, audio/vision, devices, last frame/audio, transcript counts
+screenpipe-ctl.sh devices    # audio devices the engine can see
+screenpipe-ctl.sh meetings   # detection state + the last rows in `meetings`
+screenpipe-ctl.sh logs 60    # tail today's engine log
+screenpipe-ctl.sh start|stop|restart
+screenpipe-ctl.sh api        # prints the base URL
+```
+
+The API key stays in the plist and is read by the script; it is never printed. Anything the app can do
+is an HTTP call to that API, which is also reachable from another machine on the LAN because the
+recorder runs with `--listen-on-lan` (treat the key as a credential).
