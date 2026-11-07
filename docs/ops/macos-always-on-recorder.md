@@ -330,5 +330,7 @@ Calendar in the app is three separate publishers, distinct from the CLI's single
 bundle carries `com.apple.security.personal-information.calendars`, so the macOS calendar permission
 can actually be requested — the entitlement gap described in the changelog does not affect v2.7.125.
 
-Installed 2.7.125 while 2.7.145 is published; `autoUpdate` is off, and the app stages the update and
-applies it on quit. Back up `~/.screenpipe/store.bin` before editing settings by hand.
+The app was on 2.7.125 with `autoUpdate` off; it downloads updates in the background regardless and
+installs them on quit, so it moved itself to 2.7.145 during this work
+(`~/.screenpipe/update-attempt.json`, `recording-recovery.log`). Settings edits in `store.bin`
+survive the update. Back that file up before editing it by hand.
