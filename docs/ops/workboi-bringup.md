@@ -18,7 +18,7 @@ From FatBoi, the machine answers at the network layer but not at the SSH layer:
 | `ping workboi.local` | answers intermittently (0–66 % loss, 700–900 ms — asleep or in Wi-Fi power save) |
 | `arp -a` | MAC `12:52:ca:21:b7:22` on `en0`/`en1` (randomized privacy MAC) |
 | mDNS `workboi.local` | resolves (IPv6 link-local + ULA) |
-| SSH config | `Host workboi` → `HostName 192.168.0.216`, `User chris`, `IdentityFile ~/.ssh/id_ed25519_workboi`, `IdentitiesOnly yes` |
+| SSH config | `Host workboi` → `HostName workboi.local`, `User chris`, `IdentityFile ~/.ssh/id_ed25519_workboi`, `IdentitiesOnly yes` |
 | port 22 | **closed / timed out** |
 | ports 5900, 3283 | closed |
 
