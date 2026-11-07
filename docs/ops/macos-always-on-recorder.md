@@ -303,3 +303,32 @@ It never touches a meeting it did not start: an already-active engine meeting is
 
 Chrome/Arc are not polled because neither is installed here; add their AppleScript blocks if that
 changes.
+
+## 9. Desktop app (GUI) path
+
+The installed app is a different product from the CLI and, unlike the CLI, it refuses to run its
+engine until it is signed in:
+
+```
+INFO screenpipe_app: Skipping server auto-start: screenpipe account access required
+```
+
+With `user.id`, `user.email`, and `user.entitlement` all empty, the window opens, calendars load,
+and port 3030 stays closed, so the timeline/search/meeting panels are empty shells.
+
+State found and fixed on 2026-11-07 (all reversible):
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| No recordings ever, `~/.screenpipe/data` empty | `settings.disableAudio = true` | set to `false` |
+| App configured for a mic that left the machine | `audioDevices = ["fifine Microphone (input)", …]` | set to BRIO + System Audio |
+| `db_relaunch: … frame storage: active index is missing` | `storage.json` pointed at a deleted `storage/<gen>/index.sqlite` | quarantined to `~/.screenpipe/quarantine-storage-*` |
+| Engine never binds 3030 alongside the agent | both want `:3030` | `launchctl bootout gui/$(id -u)/ai.screenpipe.recorder` first |
+
+Calendar in the app is three separate publishers, distinct from the CLI's single connection concept:
+`calendar::reminders` (native EventKit), `google_calendar`, and `ics_calendar` poller. The signed
+bundle carries `com.apple.security.personal-information.calendars`, so the macOS calendar permission
+can actually be requested — the entitlement gap described in the changelog does not affect v2.7.125.
+
+Installed 2.7.125 while 2.7.145 is published; `autoUpdate` is off, and the app stages the update and
+applies it on quit. Back up `~/.screenpipe/store.bin` before editing settings by hand.
