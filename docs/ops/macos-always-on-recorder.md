@@ -253,3 +253,51 @@ screenpipe-ctl.sh api        # prints the base URL
 The API key stays in the plist and is read by the script; it is never printed. Anything the app can do
 is an HTTP call to that API, which is also reachable from another machine on the LAN because the
 recorder runs with `--listen-on-lan` (treat the key as a credential).
+
+## 8. Calendar reminders and browser-call capture
+
+The engine cannot do either of these on this build, so both are handled by small sidecar jobs that
+drive its API. The engine's own limitations, verified on 0.4.52:
+
+- `GET /calendar/events` is **404**; the detector only *enriches* meetings it already found, so there
+  is no calendar-driven trigger at all.
+- `ui_events.browser_url` has **never been populated** (`SELECT count(*) … WHERE browser_url IS NOT NULL`
+  → 0), and frames store only `app_name`/`window_name`. Browser meetings (Meet, Teams-web, Zoom-web,
+  Slack huddles) therefore cannot be discovered by the built-in detector on this host.
+
+### The manual meeting API does work
+
+Discovered by probing (note: `OPTIONS` returns 200 for *any* path here — always send a control request
+to a bogus path before trusting a probe):
+
+```
+POST /meetings/start  {"app":"Google Meet","title":"…","attendees":"…"}
+  → {"id":2,…,"meeting_app":"manual","detection_source":"manual"}
+POST /meetings/stop   {"id":2}   → closes the row
+```
+
+`StartMeetingRequest` is `{app?, title?, attendees?}` and hardcodes `detection_source="manual"`
+(`crates/screenpipe-engine/src/routes/meetings.rs`). This is the hook both sidecars use.
+
+### Calendar reminders — `screenpipe-calendar-watch.sh`
+
+Notifies N minutes (default 10) before an event, and flags events carrying a joinable link.
+
+- AppleScript/JXA over Calendar.app is **O(all events)**: measured 91–107 s for a 12-hour window. It is
+  therefore cached for 30 minutes rather than polled.
+- A Swift/EventKit helper (`sp-calendar.swift` → `sp-calendar`) does the same query in milliseconds, but
+  Calendars TCC access was **denied** for the CLI binary (exit 2, `CALENDAR_ACCESS_DENIED`), even
+  ad-hoc signed. Grant it in System Settings → Privacy & Security → Calendars to switch the fast path on;
+  until then the script logs `cache refreshed via AppleScript (slow path)`.
+- LaunchAgent `ai.screenpipe.calendarwatch`, every 5 min, `RunAtLoad`.
+
+### Browser calls — `screenpipe-browser-meeting.sh`
+
+Reads the front Safari tab URL via AppleScript (verified working) and, on
+`meet.google.com` / `teams.microsoft.com` / `zoom.us/j` / `webex.com`, calls `POST /meetings/start`
+with the tab title, then stops the meeting after two consecutive polls (~40 s) with no meeting URL.
+It never touches a meeting it did not start: an already-active engine meeting is recorded as
+`external` and left alone. LaunchAgent `ai.screenpipe.browsermeeting`, every 20 s.
+
+Chrome/Arc are not polled because neither is installed here; add their AppleScript blocks if that
+changes.
