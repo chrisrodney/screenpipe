@@ -169,6 +169,12 @@ detectable controls (or do not stay running). Next step is to re-enable piggybac
 `--audio-device` list, and confirm during a real call that `meeting_detected` flips to `true` and a row
 appears in `meetings`. `--ignored-meeting-apps` can exempt specific services if detection over-triggers.
 
+**Status (2026-11-07 16:30)**: the flag was set back to `true` and the recorder reloaded (healthy,
+2 audio devices, detector loop started, `profiles=13`). Detection has **not** yet been confirmed: no
+meeting app was running at the time, and the only evidence that counts is a new `meetings` row with a
+non-null `detection_source` during an actual call. `/meetings/status` still reports
+`detectionSource: null` immediately after the reload, which is expected while idle.
+
 ### Calendar-assisted detection is not available headless
 
 A reasonable assumption is that meetings can be picked up from the Mac calendar. On this deployment
