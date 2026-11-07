@@ -18,11 +18,13 @@ packaged CLI:
   --data-dir ~/.screenpipe-recorder --port 3030 --listen-on-lan --api-auth true \
   --retention-days 14 --retention-mode media --disable-telemetry \
   --use-system-default-audio false \
-  --audio-device "Logitech BRIO (input)" --audio-device "EMEET PIXY (input)" \
-  --audio-device "fifine Microphone (input)" --audio-device "System Audio (output)" \
+  --audio-device "Logitech BRIO (input)" --audio-device "System Audio (output)" \
   --experimental-coreaudio-system-audio \
   --experimental-meeting-piggyback false
 ```
+
+> As of 2026-11-07 the EMEET PIXY and fifine microphones were removed from this host — they move to
+> WorkBoi's dock (§4). Two devices is the intended set here: one room mic plus system audio.
 
 The launcher resolves to `@screenpipe/cli-darwin-arm64` (version `0.4.52`). **This is a packaged
 build, not a build of this repo** — its supported flags are the authority, not the source tree:
@@ -112,7 +114,10 @@ Audio is the part that matters and the part that is easiest to get subtly wrong.
 - **`--use-system-default-audio false` is required** on this host. With it enabled, capture followed
   whatever the OS default happened to be, which changed when headsets connected and produced silent
   or duplicated streams. Explicit `--audio-device` entries are stable.
-- **Three microphones capture the same room.** A day's transcription counts are instructive:
+- **Redundant microphones duplicate every sentence.** Until 2026-11-07 this host captured three mics
+  aimed at the same room, and identical speech produced two transcripts with different wording
+  (`wake on land` / `wake online`, `Chris Roddy` / `Chris Running`). BRIO + System Audio is the correct
+  set here. Counts from a day with all three, which show the duplication:
 
   | Device | Transcriptions | Notes |
   | --- | --- | --- |
@@ -163,6 +168,25 @@ detectable controls (or do not stay running). Next step is to re-enable piggybac
 (`--experimental-meeting-piggyback true` or omit the flag, which defaults to enabled), keep the explicit
 `--audio-device` list, and confirm during a real call that `meeting_detected` flips to `true` and a row
 appears in `meetings`. `--ignored-meeting-apps` can exempt specific services if detection over-triggers.
+
+### Calendar-assisted detection is not available headless
+
+A reasonable assumption is that meetings can be picked up from the Mac calendar. On this deployment
+that path is closed, and it is worth knowing before spending time on calendar settings:
+
+- The detector consumes a `calendar_events` broadcast (`subscribe_to_event::<Vec<CalendarEventSignal>>`
+in `crates/screenpipe-engine/src/meeting_detector.rs`) and only enriches a meeting it has *already*
+detected from app signals. It is not a standalone trigger.
+- The running CLI binary does **not** serve the calendar route. `GET /calendar/events` returns **404**
+for every parameter combination, even though `crates/screenpipe-engine/src/connections_api.rs` defines
+that route. The route exists in this repo's source, not in packaged build 0.4.52.
+- `/connections` lists connectable services (telegram, …) but no calendar provider.
+
+So calendar enrichment requires the desktop app to be running and publishing those events; a headless
+LaunchAgent recorder will not receive them. The calendar data itself is present — the Mac has a Google
+account for `chris@chrisrodney.com` syncing calendars, and Calendar.app is readable via AppleScript —
+but no calendar named `KCT` exists on this machine, so the expected KCT calendar is either not synced
+here or named differently (the list includes several `Client - …` calendars).
 
 ## 6. Health verification
 

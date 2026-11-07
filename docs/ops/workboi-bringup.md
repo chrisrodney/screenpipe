@@ -82,6 +82,9 @@ Carry these over because they encode hard-won lessons:
   leaves vision off (`health` reports `disabled_by_setting`).
 - One room mic + `System Audio (output)`. Do not add a second mic pointing at the same room: on FatBoi
   that produced duplicate transcripts of the same speech (33,833 vs 244 on a day's data).
+- **Arriving hardware**: the EMEET PIXY and fifine microphones move from FatBoi to a Ugreen dock
+  attached to WorkBoi, leaving BRIO as FatBoi's only mic. Configure them on WorkBoi as *its* room-mic
+  candidates, not alongside BRIO — BRIO and a dock mic in the same room is the duplication case above.
 - Verify audio by *transcription recency*, not by `audio_status: ok`.
 
 Reconsider on WorkBoi:
