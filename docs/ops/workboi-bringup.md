@@ -1,7 +1,8 @@
 # WorkBoi Bring-Up — Second Recorder Host
 
 > **Status**: Blocked on remote access (see §1)
-> **Target**: `workboi.local` / `192.168.0.216`, user `chris`
+> **Target**: `workboi.local` over mDNS, `workboi` / `workboi.tail9956c1.ts.net` over the tailnet, user `chris`
+> **Adressing rule**: always resolve by name. A LAN IP was used early on and went stale after the host slept; never hardcode one.
 > **Reference**: [`macos-always-on-recorder.md`](./macos-always-on-recorder.md) — the proven config on FatBoi
 
 WorkBoi is the intended control surface for this deployment. This is the checklist for making it a
@@ -14,8 +15,8 @@ From FatBoi, the machine answers at the network layer but not at the SSH layer:
 
 | Check | Result |
 | --- | --- |
-| `ping 192.168.0.216` | 2/2 packets, 0 % loss (~700 ms, high for LAN — Wi-Fi power save) |
-| `arp -a` | MAC `12:52:ca:21:b7:22` on `en0`/`en1` |
+| `ping workboi.local` | answers intermittently (0–66 % loss, 700–900 ms — asleep or in Wi-Fi power save) |
+| `arp -a` | MAC `12:52:ca:21:b7:22` on `en0`/`en1` (randomized privacy MAC) |
 | mDNS `workboi.local` | resolves (IPv6 link-local + ULA) |
 | SSH config | `Host workboi` → `HostName 192.168.0.216`, `User chris`, `IdentityFile ~/.ssh/id_ed25519_workboi`, `IdentitiesOnly yes` |
 | port 22 | **closed / timed out** |
@@ -161,3 +162,28 @@ If WorkBoi becomes the control surface that reads both hosts, point it at FatBoi
 (`--listen-on-lan` is already enabled there) rather than syncing databases between machines. The
 `unix-excl` lock means a second process cannot attach to FatBoi's DB directly, and copying a live
 SQLite file without its `-wal` risks a torn read.
+
+## 7. Tailscale
+
+Tailscale is the stable addressing layer for this fleet, and it is already installed on FatBoi:
+
+```
+self: FatBoi  fatboi.tail9956c1.ts.net
+peer: WorkBoi workboi.tail9956c1.ts.net   (macOS)
+```
+
+Two facts learned the hard way:
+
+- **`tailscale status` is the quickest health check for a remote Mac.** WorkBoi showed
+  `active; relay "tor"; offline, last seen 6m ago` while mDNS and ping still answered — proof it was
+  asleep rather than misconfigured. Use the tailnet DNS name (`workboi`, or the full
+  `workboi.tail9956c1.ts.net`) instead of a LAN IP.
+- **"Tailscale SSH" cannot run on this Mac's Tailscale.** Every GUI build is sandboxed — Mac App Store,
+  the standalone `.pkg`, and `brew install --cask tailscale` — and refuses with
+  *"The Tailscale SSH server does not run in sandboxed Tailscale GUI builds."* Only the open-source
+  `brew install --formula tailscale` (`tailscaled`) variant can be a Tailscale SSH **server**; all
+  variants work as an SSH **client**.
+
+  The practical fix is not to reinstall Tailscale: enable macOS **Remote Login** and connect with
+  ordinary `ssh` over the tailnet name. That gives the same reachability without depending on
+  Tailscale's SSH server at all.

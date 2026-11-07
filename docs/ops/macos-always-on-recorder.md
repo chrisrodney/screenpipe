@@ -1,7 +1,7 @@
 # Always-On macOS Recorder — Deployment Runbook
 
 > **Status**: Reference runbook, verified on 2026-11-07
-> **Reference host**: `FatBoi.local` (`192.168.0.173`), screenpipe 0.4.52
+> **Reference host**: `FatBoi.local` (tailnet `fatboi`), screenpipe 0.4.52
 > **Companion**: [`workboi-bringup.md`](./workboi-bringup.md) — replicating this on a second machine
 
 This documents a real, running deployment: what is configured, why each choice was made, what has
