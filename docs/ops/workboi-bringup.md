@@ -32,6 +32,33 @@ and `authorized_keys` cannot be the problem yet — the TCP handshake never happ
 Screen sharing is already in use on this account (a `WorkBoi1 (chris-kct).vncloc` file was in the
 single recorded meeting's notes), so enabling Remote Login is the only missing piece.
 
+### Telling whether Remote Login is on, without SSH
+
+Verified 2026-11-07. A sleeping Mac is easy to mistake for a broken key, and this cost real time:
+
+- **Ping is not proof it is awake.** A sleeping Mac behind a Bonjour Sleep Proxy still answers ARP, and
+  often ping, while everything else is dropped rather than refused. 66 % packet loss at ~900 ms RTT is
+  the signature of a machine asleep or in deep Wi-Fi power save.
+- **Dropped is not the same as closed.** `nc -z` timing out *and* no SSH banner
+  (`exec 3<>/dev/tcp/HOST/22; head -c 40 <&3`) means packets are being dropped. A refused connection
+  means something is listening and rejecting — a different problem with a different fix.
+- **Ask Bonjour instead of guessing.** With Remote Login enabled the host advertises `_ssh._tcp`:
+
+  ```bash
+  dns-sd -B _ssh._tcp local     # expect an entry named after the host, e.g. WorkBoi
+  dns-sd -B _rfb._tcp local     # screen sharing, same idea
+  ```
+
+  On 2026-11-07 this listed `FatBoi` for `_ssh._tcp` and `LilBoi`/`FatBoi` for `_rfb._tcp`, with **no
+  WorkBoi entry at all** — Remote Login was off there. No key or `authorized_keys` change can fix that.
+- **Wake-on-LAN will not rescue a randomized Wi-Fi MAC.** The target resolves to
+  `12:52:ca:21:b7:22`; the first octet `0x12` has the locally-administered bit set, i.e. a privacy MAC.
+  Magic packets can only reach a MAC that exists while the machine is associated. For reliable wake use
+  Ethernet, or disable MAC randomization for that network, and enable "Wake for network access".
+
+`~/.local/bin/workboi-bringup-wait.sh <seconds>` polls for port 22 and, the moment SSH answers, runs
+the inventory below and the §5 checks into `~/.screenpipe-recorder/workboi-bringup-<date>.log`.
+
 ## 2. What to install
 
 Match the reference host exactly before adding anything new:
