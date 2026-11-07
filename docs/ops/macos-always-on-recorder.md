@@ -259,8 +259,10 @@ recorder runs with `--listen-on-lan` (treat the key as a credential).
 The engine cannot do either of these on this build, so both are handled by small sidecar jobs that
 drive its API. The engine's own limitations, verified on 0.4.52:
 
-- `GET /calendar/events` is **404**; the detector only *enriches* meetings it already found, so there
-  is no calendar-driven trigger at all.
+- `GET /calendar/events` is **404** on 0.4.52; the detector only *enriches* meetings it already found,
+  so there is no calendar-driven trigger in the CLI build. Calendar *connections* do exist
+  (`google-calendar`, `apple-calendar`, `ics-calendar` in `/connections`), but the CLI can only set
+  Google's; see `screenpipe-0.4.52-capabilities.md` §4.
 - `ui_events.browser_url` has **never been populated** (`SELECT count(*) … WHERE browser_url IS NOT NULL`
   → 0), and frames store only `app_name`/`window_name`. Browser meetings (Meet, Teams-web, Zoom-web,
   Slack huddles) therefore cannot be discovered by the built-in detector on this host.
